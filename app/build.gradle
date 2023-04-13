@@ -84,7 +84,7 @@ task buildClientLib {
     doLast {
         exec {
             workingDir '../ALVR'
-            commandLine 'cargo', 'xtask', 'build-client-lib', '--release'
+            commandLine 'cargo', 'xtask', 'build-client-lib', '--release', '--no-stdcpp'
         }
     }
 }
