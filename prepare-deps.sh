@@ -1,9 +1,11 @@
-# Download ALVR source
-rm -r "ALVR"
-curl -sLS "https://github.com/alvr-org/ALVR/archive/refs/heads/master.zip" > download.zip
-unzip download.zip
-rm download.zip
-mv ALVR-master ALVR
+# # Download ALVR source
+# rm -r "ALVR"
+# curl -sLS "https://github.com/alvr-org/ALVR/archive/refs/heads/master.zip" > download.zip
+# # curl -sLS "https://github.com/ShootingKing-AM/ALVR/archive/refs/heads/phonevr.zip" > download.zip
+# unzip download.zip
+# rm download.zip
+# mv ALVR-master ALVR
+# # mv ALVR-phonevr ALVR
 
 pushd ALVR
 cargo xtask prepare-deps $@
