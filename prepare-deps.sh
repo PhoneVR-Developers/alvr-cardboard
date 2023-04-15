@@ -13,19 +13,21 @@ popd
 
 rm -r cardboard
 
-# Download sdk source
-rm -r "cardboard-master"
-curl -sLS "https://github.com/googlevr/cardboard/archive/refs/heads/master.zip" > download.zip
+# Download sdk source$
+CARB_REPO_NAME="cardboard-phonevr"
+rm -r "${CARB_REPO_NAME}"
+# curl -sLS "https://github.com/googlevr/cardboard/archive/refs/heads/master.zip" > download.zip
+curl -sLS "https://github.com/ShootingKing-AM/cardboard/archive/refs/heads/phonevr.zip" > download.zip
 unzip download.zip
 rm download.zip
 
 # Build sdk
-pushd "cardboard-master"
+pushd "${CARB_REPO_NAME}"
 ./gradlew sdk:assembleRelease -Parm64-v8a
 popd
 
 # Prepare files
 mkdir cardboard
-mv "cardboard-master/sdk/build/outputs/aar/sdk-release.aar" cardboard/cardboard-sdk.aar
-cp "cardboard-master/sdk/include/cardboard.h" cardboard/cardboard.h
-rm -r "cardboard-master"
+mv "${CARB_REPO_NAME}/sdk/build/outputs/aar/sdk-release.aar" cardboard/cardboard-sdk.aar
+cp "${CARB_REPO_NAME}/sdk/include/cardboard.h" cardboard/cardboard.h
+rm -r "${CARB_REPO_NAME}"

@@ -27,6 +27,7 @@ void log(AlvrLogLevel level, const char *format, ...) {
 
 #define error(...) log(ALVR_LOG_LEVEL_ERROR, __VA_ARGS__)
 #define info(...) log(ALVR_LOG_LEVEL_INFO, __VA_ARGS__)
+#define debug(...) log(ALVR_LOG_LEVEL_DEBUG, __VA_ARGS__)
 
 uint64_t HEAD_ID = alvr_path_string_to_id("/user/head");
 
@@ -126,13 +127,16 @@ Pose getPose(uint64_t timestampNs) {
     pose.position[1] = /*-headPos[1]*/ +FLOOR_HEIGHT;
     pose.position[2] = 0; //-headPos[2];
 
+    debug("returning pos (%f,%f,%f) orient (%f, %f, %f, %f)", pos[0], pos[1], pos[2], q[0], q[1], q[2], q[3]);
     return pose;
 }
 
 void inputThread() {
     auto deadline = std::chrono::steady_clock::now();
 
-    if (CTX.streaming) {
+    info("inputThread: thread staring...");
+    while (CTX.streaming) {
+        debug("inputThread: streaming...");
         uint64_t targetTimestampNs = GetBootTimeNano() + alvr_get_head_prediction_offset_ns();
 
         Pose headPose = getPose(targetTimestampNs);
@@ -231,6 +235,7 @@ Java_com_google_cardboard_VrActivity_setScreenResolutionNative(JNIEnv *, jobject
 extern "C" JNIEXPORT void JNICALL
 Java_com_google_cardboard_VrActivity_renderNative(JNIEnv *, jobject) {
     if (CTX.renderingParamsChanged) {
+        info("renderingParamsChanged, processing new params");
         uint8_t *buffer;
         int size;
         CardboardQrCode_getSavedDeviceParams(&buffer, &size);
@@ -239,6 +244,7 @@ Java_com_google_cardboard_VrActivity_renderNative(JNIEnv *, jobject) {
             return;
         }
 
+        info("renderingParamsChanged, sending new params to alvr");
         CardboardLensDistortion_destroy(CTX.lensDistortion);
         CTX.lensDistortion = CardboardLensDistortion_create(buffer, size, CTX.screenWidth,
                                                             CTX.screenHeight);
@@ -266,12 +272,14 @@ Java_com_google_cardboard_VrActivity_renderNative(JNIEnv *, jobject) {
 
     // Note: if GL context is recreated, old resources are already freed.
     if (CTX.renderingParamsChanged && !CTX.glContextRecreated) {
+        info("Pausing ALVR since glContext is not recreated, deleting textures");
         alvr_pause_opengl();
 
         glDeleteTextures(2, CTX.lobbyTextures);
     }
 
     if (CTX.renderingParamsChanged || CTX.glContextRecreated) {
+        info("Rebuilding, binding textures, Resuming ALVR since glContextRecreated %b, renderingParamsChanged %b", CTX.renderingParamsChanged, CTX.glContextRecreated);
         glGenTextures(2, CTX.lobbyTextures);
 
         for (auto &lobbyTexture: CTX.lobbyTextures) {
@@ -295,11 +303,14 @@ Java_com_google_cardboard_VrActivity_renderNative(JNIEnv *, jobject) {
         if (event.tag == ALVR_EVENT_HUD_MESSAGE_UPDATED) {
             auto message_length = alvr_hud_message(nullptr);
             auto message_buffer = std::vector<char>(message_length);
+            info("ALVR Poll Event: HUD Message Update - %s", &message_buffer[0]);
+
             alvr_hud_message(&message_buffer[0]);
 
             alvr_update_hud_message_opengl(&message_buffer[0]);
         }
         if (event.tag == ALVR_EVENT_STREAMING_STARTED) {
+            info("ALVR Poll Event: ALVR_EVENT_STREAMING_STARTED, generating and binding textures...");
             auto config = event.STREAMING_STARTED;
 
             glGenTextures(2, CTX.streamTextures);
@@ -315,6 +326,7 @@ Java_com_google_cardboard_VrActivity_renderNative(JNIEnv *, jobject) {
             AlvrFov fovArr[2] = {getFov((CardboardEye) 0), getFov((CardboardEye) 1)};
             alvr_send_views_config(fovArr, CTX.eyeOffsets[0] - CTX.eyeOffsets[1]);
 
+            info("ALVR Poll Event: ALVR_EVENT_STREAMING_STARTED, View configs sent...");
             // todo: send battery
 
             auto leftIntHandle = (uint32_t) CTX.streamTextures[0];
@@ -336,14 +348,17 @@ Java_com_google_cardboard_VrActivity_renderNative(JNIEnv *, jobject) {
 
             alvr_start_stream_opengl(render_config);
 
+            info("ALVR Poll Event: ALVR_EVENT_STREAMING_STARTED, opengl stream started and input Thread started...");
             CTX.streaming = true;
             CTX.inputThread = std::thread(inputThread);
 
         } else if (event.tag == ALVR_EVENT_STREAMING_STOPPED) {
+            info("ALVR Poll Event: ALVR_EVENT_STREAMING_STOPPED, Waiting for inputThread to join...");
             CTX.streaming = false;
             CTX.inputThread.join();
 
             glDeleteTextures(2, CTX.streamTextures);
+            info("ALVR Poll Event: ALVR_EVENT_STREAMING_STOPPED, Stream stopped deleted textures.");
         }
     }
 
@@ -394,6 +409,8 @@ Java_com_google_cardboard_VrActivity_renderNative(JNIEnv *, jobject) {
 
     // Note: the Cardboard SDK does not support reprojection!
     // todo: manually implement it?
+
+    // info("nativeRendered: Rendering to Display...");
     CardboardDistortionRenderer_renderEyeToDisplay(CTX.distortionRenderer, 0, 0, 0, CTX.screenWidth,
                                                    CTX.screenHeight, &viewsDescs[0],
                                                    &viewsDescs[1]);

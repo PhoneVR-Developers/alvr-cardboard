@@ -92,3 +92,5 @@ lint/tmp/
 /ALVR-master
 libraries
 download.zip
+
+*.vscode/settings.json
