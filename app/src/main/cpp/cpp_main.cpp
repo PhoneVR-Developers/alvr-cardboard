@@ -148,7 +148,7 @@ void inputThread() {
         headMotion.position[2] = headPose.position[2];
         headMotion.orientation = headPose.orientation;
 
-        alvr_send_tracking(targetTimestampNs, &headMotion, 1, nullptr, nullptr);
+        alvr_send_tracking(targetTimestampNs, &headMotion, 1/* , nullptr, nullptr */);
 
         deadline += std::chrono::nanoseconds((uint64_t) (1e9 / 60.f / 3));
         std::this_thread::sleep_until(deadline);
